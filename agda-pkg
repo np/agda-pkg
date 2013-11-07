@@ -94,10 +94,14 @@ package(){
   packages "$1"
 }
 
+includedir(){
+  _incl=("${_incl[@]}" "$@")
+}
+
 _pkgs=()
 _args=()
 _incl=()
-_dry_run=0
+_mode=run
 
 loadconfig(){
   unset pkgs
@@ -106,37 +110,45 @@ loadconfig(){
   . "$1"
   _pkgs=("${_pkgs[@]}" "${pkgs[@]}")
   _args=("${_args[@]}" "${args[@]}")
-  for dir in "${incl[@]}"; do
-    _incl=("${_args[@]}" -i"$dir")
-  done
+  includedir "${incl[@]}"
 }
 
 # Let's parse -p<pkg> and --pkg=<pkg> flags
 for arg; do
   case "$arg" in
-    (-c*)          loadconfig "${arg#-c}" ;;
-    (--config=*)   loadconfig "${arg#--config=}" ;;
-    (-p*)          package "${arg#-p}" ;;
-    (--pkg=*)      package "${arg#--pkg=}" ;;
-    (-n|--dry-run) _dry_run=1 ;;
-    (-?|-h|--help) usage ;;
-    (*)            _args=("${_args[@]}" "$arg") ;;
+    (-c*)               loadconfig "${arg#-c}" ;;
+    (--config=*)        loadconfig "${arg#--config=}" ;;
+    (-p*)               package "${arg#-p}" ;;
+    (--pkg=*)           package "${arg#--pkg=}" ;;
+    (-i*)               includedir "${arg#-i}" ;;
+    (--include-path=*)  includedir "${arg#--include-path=}" ;;
+    (--include-dirs)    _mode=include-dirs ;;
+    (-n|--dry-run)      _mode=dry ;;
+    (-?|-h|--help)      usage ;;
+    (*)                 _args=("${_args[@]}" "$arg") ;;
   esac
 done
 
+# Debugging
+#echo "args: ${_args[@]}" >>/dev/stderr
+#echo "pkgs: ${_pkgs[@]}" >>/dev/stderr
+#echo "incl: ${_incl[@]}" >>/dev/stderr
+
 for pkg in "${_pkgs[@]}"; do
-  _incl=("${_incl[@]}" -i"$(pkgdir "$pkg")")
+  includedir "$(pkgdir "$pkg")"
 done
 
-# Debugging
-echo "args: ${_args[@]}" >>/dev/stderr
-echo "pkgs: ${_pkgs[@]}" >>/dev/stderr
-echo "incl: ${_incl[@]}" >>/dev/stderr
+for dir in "${_incl[@]}"; do
+  _args=("${_args[@]}" -i"$dir")
+done
 
-if (( !_dry_run )); then
-  echo agda "${_incl[@]}" "${_args[@]}" >>/dev/stderr
-  exec agda "${_incl[@]}" "${_args[@]}"
-else
-  echo agda "${_incl[@]}" "${_args[@]}"
-  echo 'dry run, nothing is run' >>/dev/stderr
-fi
+case "$_mode" in
+  (dry)
+    echo agda "${_args[@]}"
+    echo 'dry run, nothing is run' >>/dev/stderr;;
+  (run)
+    echo agda "${_args[@]}" >>/dev/stderr
+    exec agda "${_args[@]}";;
+  (include-dirs)
+    echo "${_incl[@]}";;
+esac
