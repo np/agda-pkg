@@ -1,0 +1,142 @@
+#!/bin/bash
+
+usage(){
+cat << EOF
+Walk-through (without changing the configuration):
+# One time setup
+$ mkdir ~/.agda-pkg
+$ cd ~/.agda-pkg
+$ mkdir github patchtag
+$ darcs get --lazy http://www.cse.chalmers.se/~nad/repos/lib/ stdlib
+
+# Example on how to build crypto-agda
+$ mkdir github/crypto-agda
+$ cd github/crypto-agda
+$ git clone https://github.com/crypto-agda/agda-nplib
+$ git clone https://github.com/crypto-agda/explore
+$ git clone https://github.com/crypto-agda/crypto-agda
+$ cd crypto-agda
+$ agda-pkg -i. -pprim -pstdlib -pcrypto-agda/agda-nplib -pcrypto-agda/explore crypto-agda.agda
+
+# Or using a configuration file:
+$ echo 'incl=(.)' > agda-pkg.conf
+$ echo 'pkgs=(prim stdlib crypto-agda/agda-nplib crypto-agda/explore)' >> # agda-pkg.conf
+$ agda-pkg -cagda-pkg.conf crypto-agda.agda
+
+This will pick the right include directives for you (-i<dir>)
+EOF
+exit 0
+}
+
+set -e
+
+# $XDG_DATA_HOME ?
+AGDA_PKG_ROOT="$HOME/.agda-pkg"
+
+# You might want to tweak those to reflect your own directory organisation
+AGDA_PKG_PRIM="$AGDA_PKG_ROOT/prim"
+AGDA_PKG_STDLIB="$AGDA_PKG_ROOT/stdlib/src"
+AGDA_PKG_GITHUB_ROOT="$AGDA_PKG_ROOT/github"
+AGDA_PKG_PATCHTAG_ROOT="$AGDA_PKG_ROOT/patchtag"
+
+# You can override those config variables through a simple script
+# to be sourced.
+for conf in "$HOME"/.agda-pkg/config \
+            "$XDG_CONFIG_HOME"/agda-pkg/config \
+            /etc/agda-pkg/config; do
+  if [ -e "$conf" ]; then
+    . "$conf"
+    break
+  fi
+done
+
+# TODO: Deal with customization specifically for those
+AGDA_PKG_SUBDIRS=(lib src .)
+AGDA_PKG_SUBROOTS=("$AGDA_PKG_GITHUB_ROOT" "$AGDA_PKG_PATCHTAG_ROOT")
+
+pkgdir(){
+  local pkg="$1"
+  case "$1" in
+    (stdlib) echo "$AGDA_PKG_STDLIB"; return 0;;
+    (prim) echo "$AGDA_PKG_PRIM"; return 0;;
+  esac
+  local fs=()
+  for root in "${AGDA_PKG_SUBROOTS[@]}"; do
+    local bpkg="$(basename "$pkg")"
+    local f="$root/$pkg/$bpkg.agda"
+    local fs=("${fs[@]}" "$f")
+    if [ -e "$f" ]; then
+      # TODO: read the subdir from special syntax in $f
+
+      # Default heuristic
+      for subdir in "${AGDA_PKG_SUBDIRS[@]}"; do
+        if [ -e "$root/$pkg/$subdir" ]; then
+          echo "$root/$pkg/$subdir"
+          return 0
+        fi
+      done
+    fi
+  done
+
+  echo "Could not find the package \`$pkg'. None of the following files exist:" >>/dev/stderr
+  for f in "${fs[@]}"; do
+    echo "  $f" >>/dev/stderr
+  done
+  exit 1
+}
+
+packages(){
+  _pkgs=("${_pkgs[@]}" "$@")
+}
+
+package(){
+  # check arity
+  packages "$1"
+}
+
+_pkgs=()
+_args=()
+_incl=()
+_dry_run=0
+
+loadconfig(){
+  unset pkgs
+  unset args
+  unset incl
+  . "$1"
+  _pkgs=("${_pkgs[@]}" "${pkgs[@]}")
+  _args=("${_args[@]}" "${args[@]}")
+  for dir in "${incl[@]}"; do
+    _incl=("${_args[@]}" -i"$dir")
+  done
+}
+
+# Let's parse -p<pkg> and --pkg=<pkg> flags
+for arg; do
+  case "$arg" in
+    (-c*)          loadconfig "${arg#-c}" ;;
+    (--config=*)   loadconfig "${arg#--config=}" ;;
+    (-p*)          package "${arg#-p}" ;;
+    (--pkg=*)      package "${arg#--pkg=}" ;;
+    (-n|--dry-run) _dry_run=1 ;;
+    (-?|-h|--help) usage ;;
+    (*)            _args=("${_args[@]}" "$arg") ;;
+  esac
+done
+
+for pkg in "${_pkgs[@]}"; do
+  _incl=("${_incl[@]}" -i"$(pkgdir "$pkg")")
+done
+
+# Debugging
+echo "args: ${_args[@]}" >>/dev/stderr
+echo "pkgs: ${_pkgs[@]}" >>/dev/stderr
+echo "incl: ${_incl[@]}" >>/dev/stderr
+
+if (( !_dry_run )); then
+  echo agda "${_incl[@]}" "${_args[@]}" >>/dev/stderr
+  exec agda "${_incl[@]}" "${_args[@]}"
+else
+  echo agda "${_incl[@]}" "${_args[@]}"
+  echo 'dry run, nothing is run' >>/dev/stderr
+fi
