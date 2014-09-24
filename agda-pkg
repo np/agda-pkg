@@ -7,7 +7,7 @@ Walk-through (without changing the configuration):
 $ mkdir ~/.agda-pkg
 $ cd ~/.agda-pkg
 $ mkdir github patchtag
-$ darcs get --lazy http://www.cse.chalmers.se/~nad/repos/lib/ stdlib
+$ git clone https://github.com/agda/agda-stdlib github/agda-stdlib
 
 # Example on how to build crypto-agda
 $ mkdir github/crypto-agda
@@ -16,11 +16,11 @@ $ git clone https://github.com/crypto-agda/agda-nplib
 $ git clone https://github.com/crypto-agda/explore
 $ git clone https://github.com/crypto-agda/crypto-agda
 $ cd crypto-agda
-$ agda-pkg -i. -pprim -pstdlib -pcrypto-agda/agda-nplib -pcrypto-agda/explore crypto-agda.agda
+$ agda-pkg -i. -pagda/agda-stdlib -pcrypto-agda/agda-nplib -pcrypto-agda/explore crypto-agda.agda
 
 # Or using a configuration file:
 $ echo 'incl=(.)' > agda-pkg.conf
-$ echo 'pkgs=(prim stdlib crypto-agda/agda-nplib crypto-agda/explore)' >> # agda-pkg.conf
+$ echo 'pkgs=(agda/agda-stdlib crypto-agda/agda-nplib crypto-agda/explore)' >> # agda-pkg.conf
 $ agda-pkg -cagda-pkg.conf crypto-agda.agda
 
 This will pick the right include directives for you (-i<dir>)
@@ -34,8 +34,6 @@ set -e
 AGDA_PKG_ROOT="$HOME/.agda-pkg"
 
 # You might want to tweak those to reflect your own directory organisation
-AGDA_PKG_PRIM="$AGDA_PKG_ROOT/prim"
-AGDA_PKG_STDLIB="$AGDA_PKG_ROOT/stdlib/src"
 AGDA_PKG_GITHUB_ROOT="$AGDA_PKG_ROOT/github"
 AGDA_PKG_PATCHTAG_ROOT="$AGDA_PKG_ROOT/patchtag"
 
@@ -53,29 +51,27 @@ done
 # TODO: Deal with customization specifically for those
 AGDA_PKG_SUBDIRS=(lib src .)
 AGDA_PKG_SUBROOTS=("$AGDA_PKG_GITHUB_ROOT" "$AGDA_PKG_PATCHTAG_ROOT")
+AGDA_PKG_MAINFILES=(Everything)
 
 pkgdir(){
   local pkg="$1"
-  case "$1" in
-    (stdlib) echo "$AGDA_PKG_STDLIB"; return 0;;
-    (prim) echo "$AGDA_PKG_PRIM"; return 0;;
-  esac
   local fs=()
   for root in "${AGDA_PKG_SUBROOTS[@]}"; do
-    local bpkg="$(basename "$pkg")"
-    local f="$root/$pkg/$bpkg.agda"
-    local fs=("${fs[@]}" "$f")
-    if [ -e "$f" ]; then
-      # TODO: read the subdir from special syntax in $f
+    for bpkg in "$(basename "$pkg")" "${AGDA_PKG_MAINFILES[@]}"; do
+      local f="$root/$pkg/$bpkg.agda"
+      local fs=("${fs[@]}" "$f")
+      if [ -e "$f" ]; then
+        # TODO: read the subdir from special syntax in $f
 
-      # Default heuristic
-      for subdir in "${AGDA_PKG_SUBDIRS[@]}"; do
-        if [ -e "$root/$pkg/$subdir" ]; then
-          echo "$root/$pkg/$subdir"
-          return 0
-        fi
-      done
-    fi
+        # Default heuristic
+        for subdir in "${AGDA_PKG_SUBDIRS[@]}"; do
+          if [ -e "$root/$pkg/$subdir" ]; then
+            echo "$root/$pkg/$subdir"
+            return 0
+          fi
+        done
+      fi
+    done
   done
 
   echo "Could not find the package \`$pkg'. None of the following files exist:" >>/dev/stderr
