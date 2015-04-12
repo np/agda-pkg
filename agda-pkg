@@ -57,18 +57,27 @@ AGDA_PKG_MAINFILES=(Everything README)
 getpkg(){
   local pkg="$1"
   local dest="$2"
+  local branch="$3"
+  local opts=()
   mkdir -p "$(dirname "$dest")"
+  if [ -n "$branch" ]; then
+    opts=(-b "$branch")
+  fi
   case "$pkg" in
     (darcshub/*)
+      if [ -n "$branch" ]; then
+        echo "Branches are unsupported for hub.darcs.net" >>/dev/stderr
+        exit 1
+      fi
       pkg="${pkg#darcshub/}"
-      darcs get "$AGDA_PKG_DARCSHUB_URL/$pkg" "$dest" ;;
+      darcs get "${opts[@]}" "$AGDA_PKG_DARCSHUB_URL/$pkg" "$dest" ;;
     (bitbucket/*)
       pkg="${pkg#bitbucket/}"
-      hg  clone "$AGDA_PKG_BITBUCKET_URL/$pkg" "$dest" ||
-      git clone "$AGDA_PKG_BITBUCKET_URL/$pkg" "$dest" ;;
+      hg  clone "${opts[@]}" "$AGDA_PKG_BITBUCKET_URL/$pkg" "$dest" ||
+      git clone "${opts[@]}" "$AGDA_PKG_BITBUCKET_URL/$pkg" "$dest" ;;
     (github/*)
       pkg="${pkg#github/}"
-      git clone "$AGDA_PKG_GITHUB_URL/$pkg" "$dest" ;;
+      git clone "${opts[@]}" "$AGDA_PKG_GITHUB_URL/$pkg" "$dest" ;;
     (*)
       echo "Unsupported package name \`$pkg'" >>/dev/stderr
       exit 1 ;;
@@ -80,6 +89,12 @@ pkgdir(){
   local kont="$2"
   local fs=()
   case "$pkg" in
+    (*#*)
+      branch="${pkg#*/*/*#}"
+      pkg="${pkg%#*}";;
+    (*) : ;;
+  esac
+  case "$pkg" in
     (*/*/*) : ;;
     (*/*)
       # The default is github
@@ -88,7 +103,7 @@ pkgdir(){
   esac
   local d="$AGDA_PKG_ROOT/$pkg"
   if [ ! -d "$d" ]; then
-    getpkg "$pkg" "$d"
+    getpkg "$pkg" "$d" "$branch"
   fi
   for bpkg in "$(basename "$pkg")" "${AGDA_PKG_MAINFILES[@]}"; do
     local f="$d/$bpkg.agda"
