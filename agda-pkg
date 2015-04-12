@@ -37,6 +37,8 @@ AGDA_PKG_ROOT="$HOME/.agda-pkg"
 AGDA_PKG_GITHUB_ROOT="$AGDA_PKG_ROOT/github"
 AGDA_PKG_PATCHTAG_ROOT="$AGDA_PKG_ROOT/patchtag"
 
+AGDA_PKG_BIN="${AGDA_PKG_BIN:-agda}"
+
 # You can override those config variables through a simple script
 # to be sourced.
 for conf in "$HOME"/.agda-pkg/config \
@@ -94,8 +96,8 @@ includedir(){
   _incl=("${_incl[@]}" "$@")
 }
 
+_args=("$AGDA_PKG_BIN")
 _pkgs=()
-_args=()
 _incl=()
 _mode=run
 
@@ -140,11 +142,11 @@ done
 
 case "$_mode" in
   (dry)
-    echo agda "${_args[@]}"
+    echo "${_args[@]}"
     echo 'dry run, nothing is run' >>/dev/stderr;;
   (run)
-    echo agda "${_args[@]}" >>/dev/stderr
-    exec agda "${_args[@]}";;
+    echo "${_args[@]}" >>/dev/stderr
+    exec "${_args[@]}";;
   (include-dirs)
     echo "${_incl[@]}";;
 esac
