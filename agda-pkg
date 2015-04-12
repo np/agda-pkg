@@ -88,6 +88,7 @@ getpkg(){
 
 pkgdir(){
   local pkg="$1"
+  local kont="$2"
   local fs=()
   for root in "${AGDA_PKG_SUBROOTS[@]}"; do
     local d="$root/$pkg"
@@ -103,7 +104,7 @@ pkgdir(){
         # Default heuristic
         for subdir in "${AGDA_PKG_SUBDIRS[@]}"; do
           if [ -e "$d/$subdir" ]; then
-            echo "$d/$subdir"
+            "$kont" "$d/$subdir"
             return 0
           fi
         done
@@ -128,6 +129,12 @@ package(){
 }
 
 includedir(){
+  for d; do
+    if [ ! -d "$d" ]; then
+      echo "includedir: No such file or directory \`$d'" >>/dev/stderr
+      exit 1
+    fi
+  done
   _incl=("${_incl[@]}" "$@")
 }
 
@@ -168,7 +175,7 @@ done
 #echo "incl: ${_incl[@]}" >>/dev/stderr
 
 for pkg in "${_pkgs[@]}"; do
-  includedir "$(pkgdir "$pkg")"
+  pkgdir "$pkg" includedir
 done
 
 for dir in "${_incl[@]}"; do
