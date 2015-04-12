@@ -88,6 +88,7 @@ pkgdir(){
   local pkg="$1"
   local kont="$2"
   local fs=()
+  local branch=
   case "$pkg" in
     (*#*)
       branch="${pkg#*#}"
