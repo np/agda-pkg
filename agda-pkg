@@ -3,27 +3,27 @@
 usage(){
 cat << EOF
 Walk-through (without changing the configuration):
-# One time setup
-$ mkdir ~/.agda-pkg
-$ cd ~/.agda-pkg
-$ mkdir github patchtag
-$ git clone https://github.com/agda/agda-stdlib github/agda-stdlib
+# Get the stdlib
+$ agda-pkg -pagda/agda-stdlib -n
+# The -p indicates a package and -n indicates to dry-run agda only,
+# still this should download the stdlib from github.
 
-# Example on how to build crypto-agda
-$ mkdir github/crypto-agda
-$ cd github/crypto-agda
-$ git clone https://github.com/crypto-agda/agda-nplib
-$ git clone https://github.com/crypto-agda/explore
-$ git clone https://github.com/crypto-agda/crypto-agda
-$ cd crypto-agda
-$ agda-pkg -i. -pagda/agda-stdlib -pcrypto-agda/agda-nplib -pcrypto-agda/explore crypto-agda.agda
+The -p takes care of getting the package from the remote repository
+and and pick the right include directives (-i<dir>).
 
-# Or using a configuration file:
-$ echo 'incl=(.)' > agda-pkg.conf
-$ echo 'pkgs=(agda/agda-stdlib crypto-agda/agda-nplib crypto-agda/explore)' >> # agda-pkg.conf
+# Example on how to build agda-libjs
+$ agda-pkg -pcrypto-agda/agda-libjs -n
+$ cd ~/.agda-pkg/github/crypto-agda/agda-libjs
+$ agda-pkg -i. -pagda/agda-stdlib agda-libjs.agda
+
+The -c indicates a configuration file which can
+list all the dependencies.
+
+# Configuration file: Example on how to build crypto-agda
+$ agda-pkg -pcrypto-agda/crypto-agda -n
+$ cd ~/.agda-pkg/github/crypto-agda/crypto-agda
+$ cat agda-pkg.conf
 $ agda-pkg -cagda-pkg.conf crypto-agda.agda
-
-This will pick the right include directives for you (-i<dir>)
 EOF
 exit 0
 }
