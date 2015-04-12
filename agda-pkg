@@ -165,7 +165,7 @@ for arg; do
     (--include-path=*)  includedir "${arg#--include-path=}" ;;
     (--include-dirs)    _mode=include-dirs ;;
     (-n|--dry-run)      _mode=dry ;;
-    (-?|-h|--help)      usage ;;
+    (-\?|-h|--help)     usage ;;
     (*)                 _args=("${_args[@]}" "$arg") ;;
   esac
 done
