@@ -52,7 +52,7 @@ done
 
 # TODO: Deal with customization specifically for those
 AGDA_PKG_SUBDIRS=(lib src .)
-AGDA_PKG_MAINFILES=(Everything)
+AGDA_PKG_MAINFILES=(Everything README)
 
 getpkg(){
   local pkg="$1"
