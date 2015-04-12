@@ -90,7 +90,7 @@ pkgdir(){
   local fs=()
   case "$pkg" in
     (*#*)
-      branch="${pkg#*/*/*#}"
+      branch="${pkg#*#}"
       pkg="${pkg%#*}";;
     (*) : ;;
   esac
