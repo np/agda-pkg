@@ -61,25 +61,26 @@ AGDA_PKG_SUBROOTS=("$AGDA_PKG_GITHUB_ROOT" "$AGDA_PKG_BITBUCKET_ROOT" "$AGDA_PKG
 AGDA_PKG_MAINFILES=(Everything)
 
 getpkg(){
-  local root="$1"
-  local pkg="$2"
+  local pkg="$1"
+  local dest="$2"
+  mkdir -p "$(dirname "$dest")"
   case "$pkg" in
     (darcshub/*)
       pkg="${pkg#darcshub/}"
-      darcs get "$AGDA_PKG_BITBUCKET_ROOT/$pkg" "$root/$pkg" ;;
+      darcs get "$AGDA_PKG_DARCSHUB_URL/$pkg" "$dest" ;;
     (bitbucket/*)
       pkg="${pkg#bitbucket/}"
-      hg  clone "$AGDA_PKG_BITBUCKET_URL/$pkg" "$root/$pkg" ||
-      git clone "$AGDA_PKG_BITBUCKET_URL/$pkg" "$root/$pkg" ;;
+      hg  clone "$AGDA_PKG_BITBUCKET_URL/$pkg" "$dest" ||
+      git clone "$AGDA_PKG_BITBUCKET_URL/$pkg" "$dest" ;;
     (github/*)
       pkg="${pkg#github/}"
-      git clone "$AGDA_PKG_GITHUB_URL/$pkg" "$root/$pkg" ;;
+      git clone "$AGDA_PKG_GITHUB_URL/$pkg" "$dest" ;;
     (*/*/*)
       echo "Unsupported package name \`$pkg'" >>/dev/stderr
       exit 1 ;;
     (*/*)
       # The default is github
-      git clone "$AGDA_PKG_GITHUB_URL/$pkg" "$root/$pkg" ;;
+      git clone "$AGDA_PKG_GITHUB_URL/$pkg" "$dest" ;;
     (*)
       echo "Unsupported package name \`$pkg'" >>/dev/stderr
       exit 1 ;;
@@ -93,7 +94,7 @@ pkgdir(){
   for root in "${AGDA_PKG_SUBROOTS[@]}"; do
     local d="$root/$pkg"
     if [ ! -d "$d" ]; then
-      getpkg "$root" "$pkg"
+      getpkg "$pkg" "$d"
     fi
     for bpkg in "$(basename "$pkg")" "${AGDA_PKG_MAINFILES[@]}"; do
       local f="$d/$bpkg.agda"
