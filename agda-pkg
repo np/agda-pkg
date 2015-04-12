@@ -35,7 +35,12 @@ AGDA_PKG_ROOT="$HOME/.agda-pkg"
 
 # You might want to tweak those to reflect your own directory organisation
 AGDA_PKG_GITHUB_ROOT="$AGDA_PKG_ROOT/github"
-AGDA_PKG_PATCHTAG_ROOT="$AGDA_PKG_ROOT/patchtag"
+AGDA_PKG_BITBUCKET_ROOT="$AGDA_PKG_ROOT/bitbucket"
+AGDA_PKG_DARCSHUB_ROOT="$AGDA_PKG_ROOT/darcshub"
+
+AGDA_PKG_GITHUB_URL=https://github.com
+AGDA_PKG_DARCSHUB_URL=http://hub.darcs.net
+AGDA_PKG_BITBUCKET_URL=https://bitbucket.org
 
 AGDA_PKG_BIN="${AGDA_PKG_BIN:-agda}"
 
@@ -52,23 +57,53 @@ done
 
 # TODO: Deal with customization specifically for those
 AGDA_PKG_SUBDIRS=(lib src .)
-AGDA_PKG_SUBROOTS=("$AGDA_PKG_GITHUB_ROOT" "$AGDA_PKG_PATCHTAG_ROOT")
+AGDA_PKG_SUBROOTS=("$AGDA_PKG_GITHUB_ROOT" "$AGDA_PKG_BITBUCKET_ROOT" "$AGDA_PKG_DARCSHUB_ROOT")
 AGDA_PKG_MAINFILES=(Everything)
+
+getpkg(){
+  local root="$1"
+  local pkg="$2"
+  case "$pkg" in
+    (darcshub/*)
+      pkg="${pkg#darcshub/}"
+      darcs get "$AGDA_PKG_BITBUCKET_ROOT/$pkg" "$root/$pkg" ;;
+    (bitbucket/*)
+      pkg="${pkg#bitbucket/}"
+      hg  clone "$AGDA_PKG_BITBUCKET_URL/$pkg" "$root/$pkg" ||
+      git clone "$AGDA_PKG_BITBUCKET_URL/$pkg" "$root/$pkg" ;;
+    (github/*)
+      pkg="${pkg#github/}"
+      git clone "$AGDA_PKG_GITHUB_URL/$pkg" "$root/$pkg" ;;
+    (*/*/*)
+      echo "Unsupported package name \`$pkg'" >>/dev/stderr
+      exit 1 ;;
+    (*/*)
+      # The default is github
+      git clone "$AGDA_PKG_GITHUB_URL/$pkg" "$root/$pkg" ;;
+    (*)
+      echo "Unsupported package name \`$pkg'" >>/dev/stderr
+      exit 1 ;;
+  esac
+}
 
 pkgdir(){
   local pkg="$1"
   local fs=()
   for root in "${AGDA_PKG_SUBROOTS[@]}"; do
+    local d="$root/$pkg"
+    if [ ! -d "$d" ]; then
+      getpkg "$root" "$pkg"
+    fi
     for bpkg in "$(basename "$pkg")" "${AGDA_PKG_MAINFILES[@]}"; do
-      local f="$root/$pkg/$bpkg.agda"
+      local f="$d/$bpkg.agda"
       local fs=("${fs[@]}" "$f")
       if [ -e "$f" ]; then
         # TODO: read the subdir from special syntax in $f
 
         # Default heuristic
         for subdir in "${AGDA_PKG_SUBDIRS[@]}"; do
-          if [ -e "$root/$pkg/$subdir" ]; then
-            echo "$root/$pkg/$subdir"
+          if [ -e "$d/$subdir" ]; then
+            echo "$d/$subdir"
             return 0
           fi
         done
